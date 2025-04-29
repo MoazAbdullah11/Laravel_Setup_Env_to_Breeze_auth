@@ -2,6 +2,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use Illuminate\Http\Request;
+use App\Http\Controllers\MessageController;
 
 // Show Register Form
 Route::get('/register', function () {
@@ -57,3 +58,39 @@ Route::post('/logout', function (Request $request) {
 
     return redirect()->route('login');
 })->name('logout');
+
+
+
+
+
+Route::middleware(['auth'])->group(function () {
+    Route::post('/contact', [MessageController::class, 'store']);
+    Route::get('/messages', [MessageController::class, 'index'])->name('messages');
+});
+
+
+
+use App\Http\Controllers\PostController;
+
+Route::middleware('auth')->group(function () {
+    Route::get('/ajax-posts', [PostController::class, 'index'])->name('posts.index');
+    Route::post('/ajax-posts', [PostController::class, 'store'])->name('posts.store');
+    Route::get('/ajax-posts/{id}', [PostController::class, 'show'])->name('posts.show');
+    Route::put('/ajax-posts/{id}', [PostController::class, 'update'])->name('posts.update');
+    Route::delete('/ajax-posts/{id}', [PostController::class, 'destroy'])->name('posts.destroy');
+});
+
+
+
+Route::get('/ajax-posts-view', function () {
+    return view('ajax-posts');
+})->middleware('auth'); // protect for logged-in users
+
+
+Route::get('/ajax-posts', function () {
+    $posts = \App\Models\Post::all();
+    return view('ajax-posts', compact('posts'));
+});
+
+
+Route::get('/ajax-posts/search', [App\Http\Controllers\PostController::class, 'search']);
