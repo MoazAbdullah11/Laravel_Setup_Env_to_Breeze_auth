@@ -94,3 +94,5 @@ Route::get('/ajax-posts', function () {
 
 
 Route::get('/ajax-posts/search', [App\Http\Controllers\PostController::class, 'search']);
+Route::get('/ajax-posts/table', [PostController::class, 'indexTable']);
+

@@ -2,6 +2,7 @@
 <html>
 <head>
     <title>Home</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -27,7 +28,6 @@
         form {
             display: flex;
             flex-direction: column;
-            align-items: stretch;
             gap: 15px;
         }
 
@@ -49,17 +49,23 @@
             background-color: #45a049;
         }
 
-        .logout-form {
+        #loadAjaxPosts {
             margin-top: 20px;
+            background-color: #007bff;
+        }
+
+        #ajaxPostsContainer {
+            margin-top: 30px;
+            padding: 20px;
         }
     </style>
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-
 </head>
 <body>
+
     <div class="container">
         <h2>Welcome, {{ auth()->user()->name }}!</h2>
 
+        <!-- Contact Form -->
         <form method="POST" action="/contact">
             @csrf
             <input type="text" name="subject" placeholder="Subject" required>
@@ -67,169 +73,133 @@
             <button type="submit">Send Message</button>
         </form>
 
+        <!-- Logout Form -->
         <form method="POST" action="{{ route('logout') }}" class="logout-form">
             @csrf
             <button type="submit">Logout</button>
         </form>
+
+        <!-- Load AJAX Posts Button -->
+        <button id="loadAjaxPosts">Load AJAX Posts</button>
+
+        <!-- Show Records Button -->
+        <a href="{{ route('messages') }}">
+            <button style="margin-top: 10px; background-color: #007bff;">Show Records</button>
+        </a>
     </div>
 
-    <!-- Place this below the logout form -->
+    <!-- AJAX Posts Section -->
+    <div id="ajaxPostsContainer"></div>
 
-<button id="loadAjaxPosts" style="margin-top: 20px; background-color: #007bff;">Load AJAX Posts</button>
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
-<!-- Container to inject ajax-posts content -->
-<div id="ajaxPostsContainer" style="margin-top: 30px;"></div>
+    <!-- CSRF Setup -->
+    <script>
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        localStorage.setItem('csrf_token', csrfToken);
 
-
-
-    <a href="{{ route('messages') }}">
-    <button style="margin-top: 10px; background-color: #007bff;">Show Records</button>
-</a>
-
-</body>
-</html>
-
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script>
-    
-    $('#loadAjaxPosts').click(function() {
-        $.ajax({
-            url: '/ajax-posts',
-            type: 'GET',
-            success: function(response) {
-                $('#ajaxPostsContainer').html(response);
-            },
-            error: function() {
-                alert('Could not load AJAX Posts.');
+        $.ajaxSetup({
+            headers: {
+                'X-CSRF-TOKEN': localStorage.getItem('csrf_token')
             }
         });
-    });
-</script>
+    </script>
 
-
-
-
-
-
-
-
-
-<script>
-    // $.ajaxSetup({
-    //     headers: {
-    //         'X-CSRF-TOKEN': '{{ csrf_token() }}'
-    //     }
-    // });
-
-    // Save token once on page load
-    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-    localStorage.setItem('csrf_token', csrfToken);
-
-    // Set token from localStorage into every AJAX request
-    $.ajaxSetup({
-        headers: {
-            'X-CSRF-TOKEN': localStorage.getItem('csrf_token')
-        }
-    });
-    console.log('CSRF Token:', localStorage.getItem('csrf_token'));
-
-
-    $('#loadAjaxPosts').click(function () {
-        $.ajax({
-            url: '/ajax-posts',
-            type: 'GET',
-            success: function (response) {
-                // console.log('AJAX Response:', response);
-                $('#ajaxPostsContainer').html(response);
-
-                // Attach event handlers *after* the content loads
-                attachAjaxCrudHandlers();
-            },
-            error: function () {
-                alert('Could not load AJAX Posts.');
-            }
-        });
-    });
-
-    function attachAjaxCrudHandlers() {
-        // Save Post
-        $(document).on('click', 'button:contains("Save")', function () {
-            const id = $('#post_id').val();
-            const title = $('#title').val();
-            const body = $('#body').val();
-
-            const data = { title, body };
-            const url = id ? `/ajax-posts/${id}` : '/ajax-posts';
-            const method = id ? 'PUT' : 'POST';
-
+    <!-- AJAX Functionality -->
+    <script>
+        // Load posts
+        $('#loadAjaxPosts').click(function () {
             $.ajax({
-                url: url,
-                type: method,
-                data: data,
-                success: function (post) {
-                    const row = `
-                        <tr id="row_${post.id}">
-                            <td>${post.id}</td>
-                            <td>${post.title}</td>
-                            <td>${post.body}</td>
-                            <td>
-                                <span class="btn-edit" onclick="editPost(${post.id})">✏️</span>
-                                <span class="btn-delete" onclick="deletePost(${post.id})">🗑️</span>
-                            </td>
-                        </tr>`;
-
-                    if (id) {
-                        $(`#row_${post.id}`).replaceWith(row);
-                    } else {
-                        $('#postTable tbody').prepend(row);
-                    }
-
-                    $('#post_id').val('');
-                    $('#title').val('');
-                    $('#body').val('');
+                url: '/ajax-posts',
+                type: 'GET',
+                success: function (response) {
+                    $('#ajaxPostsContainer').html(response);
+                    attachAjaxCrudHandlers();
+                },
+                error: function () {
+                    alert('Could not load AJAX Posts.');
                 }
             });
         });
-    }
 
-    // Global functions still needed
-    function editPost(id) {
-        $.get(`/ajax-posts/${id}`, function (post) {
-            $('#post_id').val(post.id);
-            $('#title').val(post.title);
-            $('#body').val(post.body);
-        });
-    }
+        function attachAjaxCrudHandlers() {
+            // Save post
+            $(document).on('click', 'button:contains("Save")', function () {
+                const id = $('#post_id').val();
+                const title = $('#title').val();
+                const body = $('#body').val();
+                const data = { title, body };
+                const url = id ? `/ajax-posts/${id}` : '/ajax-posts';
+                const method = id ? 'PUT' : 'POST';
 
-    function deletePost(id) {
-        if (!confirm('Are you sure you want to delete this post?')) return;
+                $.ajax({
+                    url: url,
+                    type: method,
+                    data: data,
+                    success: function (post) {
+                        const row = `
+                            <tr id="row_${post.id}">
+                                <td>${post.id}</td>
+                                <td>${post.title}</td>
+                                <td>${post.body}</td>
+                                <td>
+                                    <span class="btn-edit" onclick="editPost(${post.id})">✏️</span>
+                                    <span class="btn-delete" onclick="deletePost(${post.id})">🗑️</span>
+                                </td>
+                            </tr>`;
 
-        $.ajax({
-            url: `/ajax-posts/${id}`,
-            type: 'DELETE',
-            success: function () {
-                $(`#row_${id}`).remove();
-            }
-        });
-    }
+                        if (id) {
+                            $(`#row_${post.id}`).replaceWith(row);
+                        } else {
+                            $('#postTable tbody').prepend(row);
+                        }
 
+                        $('#post_id').val('');
+                        $('#title').val('');
+                        $('#body').val('');
+                    }
+                });
+            });
 
-    $(document).on('keyup', '#searchInput', function () {
-        const query = $(this).val();
-        $.ajax({
-            url: '/ajax-posts/search',
-            type: 'GET',
-            data: { query: query },
-            success: function (response) {
-                $('#ajaxPostsContainer').html(response);
-                attachAjaxCrudHandlers(); // Re-attach handlers if needed
-            },
-            error: function () {
-                alert('Search failed.');
-            }
-        });
-    });
+            // Search posts
+            $(document).on('keyup', '#searchInput', function () {
+                const query = $(this).val();
+                $.ajax({
+                    url: '/ajax-posts/search',
+                    type: 'GET',
+                    data: { query },
+                    success: function (response) {
+                        $('#ajaxPostsContainer').html(response);
+                        attachAjaxCrudHandlers();
+                    },
+                    error: function () {
+                        alert('Search failed.');
+                    }
+                });
+            });
+        }
 
+        // Global functions for edit/delete
+        function editPost(id) {
+            $.get(`/ajax-posts/${id}`, function (post) {
+                $('#post_id').val(post.id);
+                $('#title').val(post.title);
+                $('#body').val(post.body);
+            });
+        }
 
-    
-</script>
+        function deletePost(id) {
+            if (!confirm('Are you sure you want to delete this post?')) return;
+
+            $.ajax({
+                url: `/ajax-posts/${id}`,
+                type: 'DELETE',
+                success: function () {
+                    $(`#row_${id}`).remove();
+                }
+            });
+        }
+    </script>
+</body>
+</html>

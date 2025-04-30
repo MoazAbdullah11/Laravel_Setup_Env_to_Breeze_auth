@@ -40,6 +40,9 @@
         </div>
         <button onclick="savePost()">Save</button>
     </div>
+    <div class="form-group" style="margin-top: 20px;">
+    <input type="text" id="searchInput" placeholder="Search posts..." style="width: 100%; padding: 10px; border: 1px solid #ccc;">
+</div>
 
     <table id="postTable">
         <thead>
